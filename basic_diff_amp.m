@@ -7,8 +7,8 @@ scriptDir = fileparts(mfilename('fullpath'));
 cd(scriptDir);
 addpath(fullfile(scriptDir, 'LTspice2Matlab'));
 
-%% Monte Carlo / Latin hypercube settings
-N_MC = 500;  % Use 5 or 10 for the first pipeline check
+%% Sampling and Variable Declaration
+N_MC = 500; 
 
 V_VS = 5;
 R_C1 = 4.7e3;
@@ -26,7 +26,7 @@ delta = 0.1;  % Independent resistor variation: +/-10%
 tic
 
 % Each row is one sample; columns are relative changes to RC1 and RC2.
-X_MC = (2*lhsdesign(N_MC, 2) - 1) * delta;
+X_MC = (2*lhsdesign(N_MC, 3) - 1) * delta;
 
 figure;
 histogram(R_C1 * (1 + X_MC(:,1)));
@@ -39,7 +39,6 @@ legend('R_C1 samples', 'R_C2 samples');
 index_NAN = zeros(N_MC, 1);
 freq = [];
 
-% These matrices will be initialized after the first successful AC run.
 V2_diff_input = [];
 V3_diff_input = [];
 V2_common_input = [];
@@ -50,13 +49,13 @@ netlistFile = fullfile(scriptDir, 'basic-differential-amplifier.cir');
 paramsFile = fullfile(scriptDir, 'DIFFERENTIAL_PARAMS.cir');
 rawFile = fullfile(scriptDir, 'basic-differential-amplifier.raw');
 
-%% Run both input modes for every parameter sample
+%% Monte Carlo Simulation for both Modes
 for p1 = 1:N_MC
 
     PR_C1 = R_C1 * (1 + X_MC(p1,1));
     PR_C2 = R_C2 * (1 + X_MC(p1,2));
     PV_VS = V_VS;
-    PI_S = I_S;
+    PI_S = I_S * (1 + X_MC(p1,3));
 
     % mode = 1: differential input
     % mode = 2: common-mode input
@@ -74,7 +73,6 @@ for p1 = 1:N_MC
             PV_PHASE2 = 0;
         end
 
-        % Write this sample's circuit and input parameters.
         fid2 = fopen(paramsFile, 'w');
         if fid2 == -1
             error('Could not open parameter file for writing: %s', paramsFile);
@@ -91,7 +89,6 @@ for p1 = 1:N_MC
         fprintf(fid2, '.PARAM PV_Vin_2_phase=%.15g\n', PV_PHASE2);
         fclose(fid2);
 
-        % Run LTspice. system() waits for the batch command to finish.
         command = sprintf('"%s" -b "%s"', ltspiceExe, netlistFile);
         [ans_sys, cmdout] = system(command);
 

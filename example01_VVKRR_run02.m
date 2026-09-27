@@ -20,7 +20,10 @@ scriptDir = fileparts(mfilename('fullpath'));
 % Add the VV-KRR toolbox folder and all its subfolders.
 % The folder "tool_VVKRR_v0" is assumed to be located in the same
 % directory as this main script.
-addpath(genpath(fullfile(scriptDir, '..', '..', 'tool_VVKRR_v0')));
+toolboxDir = fullfile(scriptDir, '..', '..', '..', ...
+    'Pre-material', 'small-data-compressed-vv-krr', ...
+    'tool_VVKRR_v0');
+addpath(genpath(toolboxDir));
 
 
 % Plot/font settings used in the figures
@@ -38,17 +41,43 @@ FA = 'normal';
 %   Y_TEST      : test output responses;
 %   freq        : frequency vector.
 
-load(fullfile(scriptDir, 'diff_amp_data.mat'))
+D = load(fullfile(scriptDir, 'diff_amp_data.mat'));
+
+X = D.X_MC;
+Y = D.CMRR_dB;
+freq = D.freq;
+
+% Keep only rows with finite inputs and outputs.
+valid = all(~isnan(X) & ~isinf(X), 2) & ...
+    all(~isnan(Y) & ~isinf(Y), 2);
+X = X(valid,:);
+Y = Y(valid,:);
+
+% Make a repeatable 80/20 training/test split.
+rng(1);
+order = randperm(size(X,1));
+nTrain = floor(0.8 * size(X,1));
+iTrain = order(1:nTrain);
+iTest = order(nTrain+1:end);
+
+Y_ED = Y(iTrain,:);
+Y_TEST = Y(iTest,:);
+
+% Normalize inputs using training-set statistics only.
+muX = mean(X(iTrain,:),1);
+sigmaX = std(X(iTrain,:),0,1);
+sigmaX(sigmaX == 0) = 1;
+
+X_ED_norm = (X(iTrain,:) - muX) ./ sigmaX;
+X_TEST_norm = (X(iTest,:) - muX) ./ sigmaX;
 
 %% MC plot
 figure
-plot(freq,Y_TEST,'k')
+plot(freq/1e6, Y_TEST.', 'k');
+xlabel('Frequency (MHz)');
+ylabel('CMRR (dB)');
 
-% Axis labels
-xlabel('Frequency (GHz)', 'FontSize', FS, 'FontName', FN);
-ylabel('Magnitude (dB)', 'FontSize', FS, 'FontName', FN);
-
-title('MC example 1 computed on the test set')
+title('MC Basic Differential Amplifier computed on the test set')
 % Main plot aesthetics
 axis tight;
 grid on;
