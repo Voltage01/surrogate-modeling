@@ -1,0 +1,10 @@
+* Parameters for differential-amplifier AC simulation
+
+.PARAM PR_C1=4320.81098623198
+.PARAM PR_C2=4355.22433750949
+.PARAM PV_VS=5
+.PARAM PI_S=0.001
+.PARAM PV_Vin_1_amp=1
+.PARAM PV_Vin_1_phase=0
+.PARAM PV_Vin_2_amp=1
+.PARAM PV_Vin_2_phase=0
